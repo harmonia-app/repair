@@ -1,0 +1,62 @@
+name: "Harmonia · repair"
+description: "A red check opens a Fix on your own seat. Proven, it lands as a draft pull request."
+author: "Harmonia"
+branding:
+  icon: "check-circle"
+  color: "blue"
+inputs:
+  key:
+    description: "Your Harmonia key (a secret: HARMONIA_KEY)."
+    required: true
+  check:
+    description: "The one command that went red — the proof the fix must pass (e.g. python -m pytest -q)."
+    required: true
+  setup:
+    description: "One shell line run after the clone, before every attempt and check (e.g. pip install -e .[test])."
+    required: false
+    default: ""
+  log:
+    description: "A path to the failing job's log excerpt, or the excerpt itself; optional."
+    required: false
+    default: ""
+  service:
+    description: "The Harmonia service."
+    required: false
+    default: "https://api.harmonia.build"
+  wait:
+    description: "Wait for the proof and print the pull request (true), or return at once (false)."
+    required: false
+    default: "true"
+  timeout-minutes:
+    description: "How long to wait for the proof before returning with the run's address."
+    required: false
+    default: "20"
+  rail:
+    description: "Where the attempts and checks run: runner = this job's own machine (nothing on Harmonia's metal; the step keeps serving until the fix settles); empty = your own sandbox key, else Harmonia sandboxes at cost."
+    required: false
+    default: ""
+outputs:
+  run:
+    description: "The fix's run id."
+    value: ${{ steps.repair.outputs.run }}
+  pull-request:
+    description: "The draft pull request, once proven."
+    value: ${{ steps.repair.outputs.pull-request }}
+  stands:
+    description: "Proven · Checked · Report · Working"
+    value: ${{ steps.repair.outputs.stands }}
+runs:
+  using: "composite"
+  steps:
+    - id: repair
+      shell: bash
+      env:
+        HARMONIA_KEY: ${{ inputs.key }}
+        HARMONIA_SERVICE: ${{ inputs.service }}
+        REPAIR_CHECK: ${{ inputs.check }}
+        REPAIR_SETUP: ${{ inputs.setup }}
+        REPAIR_LOG: ${{ inputs.log }}
+        REPAIR_WAIT: ${{ inputs.wait }}
+        REPAIR_TIMEOUT_MINUTES: ${{ inputs.timeout-minutes }}
+        REPAIR_RAIL: ${{ inputs.rail }}
+      run: bash "${{ github.action_path }}/repair.sh"
