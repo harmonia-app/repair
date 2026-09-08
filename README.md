@@ -17,6 +17,7 @@ One yaml line beside your test job. One secret. Zero code in your product.
 | step | words |
 |---|---|
 | your check goes red | the job's command, commit and log excerpt → Harmonia |
+| a pull request's run | its head commit · its own branch |
 | the intake reads it | Fix · your repository · where · the proof it writes |
 | attempts, on your seat | a clean sandbox at that commit · your check is the proof |
 | proven | one draft pull request onto the branch that went red |

@@ -9,6 +9,12 @@
 # Zero code in your product, one yaml line, one secret. The failing
 # check IS the contract: the same command, run in a clean sandbox at
 # this commit, must exit 0 for the fix to count. Nothing merges itself.
+#
+# THE PULL REQUEST'S HEAD (HAR-119, found live 2026-09-08 on PR 54): on a
+# pull_request run GITHUB_SHA is the merge commit GitHub made for the
+# run, not the commit that went red — so the fix is stood on the pull
+# request's head (from the event file) and delivered onto the pull
+# request's own branch; a push run keeps GITHUB_SHA.
 set -euo pipefail
 : "${HARMONIA_KEY:?the key — with: key: \${{ secrets.HARMONIA_KEY }}}"
 : "${REPAIR_CHECK:?the check — with: check: \"python -m pytest -q\"}"
@@ -25,15 +31,27 @@ export SERVICE REPO SHA JOB WORKFLOW RUN_URL LOG RAIL
 
 body=$(python3 - <<'PY'
 import json, os
+sha, branch = os.environ["SHA"], ""
+event_path = os.environ.get("GITHUB_EVENT_PATH") or ""
+if event_path and os.path.isfile(event_path):
+    # a pull_request run: the head that went red and the branch it is on
+    try:
+        with open(event_path) as fh:
+            event = json.load(fh)
+    except (OSError, ValueError):
+        event = {}
+    head = ((event.get("pull_request") or {}).get("head") or {}) if isinstance(event, dict) else {}
+    if isinstance(head, dict) and head.get("sha"):
+        sha, branch = str(head["sha"]), str(head.get("ref") or "")
 print(json.dumps({
     "ask": "",
-    "repo": os.environ["REPO"], "ref": os.environ["SHA"],
+    "repo": os.environ["REPO"], "ref": sha, "base_branch": branch,
     "check": os.environ["REPAIR_CHECK"],
     "setup": os.environ.get("REPAIR_SETUP") or "",
     "deliver": "draft_pr",
     "rail": os.environ.get("RAIL") or "",
     "situation": {"kind": "ci",
-                  "title": f"{os.environ['JOB']} went red on {os.environ['SHA'][:7]}",
+                  "title": f"{os.environ['JOB']} went red on {sha[:7]}",
                   "check": os.environ["REPAIR_CHECK"],
                   "message": (os.environ.get("LOG") or "")[-4000:],
                   "environment": os.environ["WORKFLOW"],
